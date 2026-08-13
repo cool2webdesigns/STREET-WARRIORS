@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Street Warriors - One File Game</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10131a;color:#fff;font-family:Arial,sans-serif;touch-action:none}
+canvas{display:block;width:100%;height:100%;background:#171b22}
+#hud{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;z-index:5}
+.panel{background:#000b;padding:8px 12px;border:1px solid #ffffff30;border-radius:10px;font-weight:bold;text-shadow:0 1px 2px #000}
+#message{position:fixed;top:65px;left:50%;transform:translateX(-50%);z-index:5;background:#000b;padding:8px 14px;border-radius:20px;font-weight:bold}
+#controls{position:fixed;inset:auto 0 12px 0;display:flex;justify-content:space-between;align-items:end;padding:0 14px;z-index:10;pointer-events:none}
+.group{display:flex;gap:8px;align-items:center;pointer-events:auto}
+button{border:1px solid #ffffff55;background:#202838dd;color:#fff;border-radius:14px;min-width:58px;min-height:52px;font-size:18px;font-weight:bold;box-shadow:0 4px 12px #0008;user-select:none;-webkit-user-select:none}
+button:active{transform:scale(.94);background:#34415c}
+.dpad{display:grid;grid-template-columns:58px 58px 58px;grid-template-rows:52px 52px 52px;gap:6px}
+.dpad button:nth-child(1){grid-column:2}.dpad button:nth-child(2){grid-column:1;grid-row:2}.dpad button:nth-child(3){grid-column:2;grid-row:2}.dpad button:nth-child(4){grid-column:3;grid-row:2}
+.action{display:grid;grid-template-columns:repeat(2,70px);gap:8px}
+.action button{min-width:70px;height:58px}
+#start{position:fixed;inset:0;background:#07090ddd;z-index:20;display:flex;align-items:center;justify-content:center;text-align:center}
+.card{width:min(92%,520px);padding:26px;border:1px solid #ffffff25;border-radius:20px;background:#151a24}
+.card h1{margin:0 0 8px;font-size:32px}.card p{line-height:1.5;color:#ccd3df}
+#startBtn{margin-top:12px;background:#2e7dff;border:0;min-width:180px}
+@media(max-width:600px){.panel{font-size:12px;padding:7px}.action{grid-template-columns:62px 62px}.action button{min-width:62px;font-size:14px}.dpad{grid-template-columns:52px 52px 52px;grid-template-rows:48px 48px 48px}.dpad button{min-width:52px;min-height:48px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="panel">❤️ <span id="hp">100</span> &nbsp; ⭐ <span id="score">0</span></div>
+  <div class="panel">🔫 <span id="ammo">20</span> &nbsp; 🔨 <span id="weapon">HAMMER</span></div>
+</div>
+<div id="message">Defeat the gang!</div>
+
+<div id="controls">
+  <div class="group">
+    <div class="dpad">
+      <button data-key="up">▲</button>
+      <button data-key="left">◀</button>
+      <button data-key="down">▼</button>
+      <button data-key="right">▶</button>
+    </div>
+  </div>
+  <div class="group action">
+    <button data-action="walk">WALK</button>
+    <button data-action="stop">STOP</button>
+    <button data-action="gun">🔫 GUN</button>
+    <button data-action="hammer">🔨 HIT</button>
+    <button data-action="sword">⚔️ SWORD</button>
+    <button data-action="run">🏃 RUN</button>
+  </div>
+</div>
+
+<div id="start">
+  <div class="card">
+    <h1>STREET WARRIORS</h1>
+    <p>Fight computer-controlled gang enemies in a fictional arcade arena. Use the on-screen controls or your keyboard.</p>
+    <p><b>Move:</b> Arrow keys / WASD &nbsp; <b>Gun:</b> G &nbsp; <b>Hammer:</b> H &nbsp; <b>Sword:</b> J &nbsp; <b>Run:</b> Shift</p>
+    <button id="startBtn">START GAME</button>
+  </div>
+</div>
+
+<script>
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+let W,H,scale=1,running=false,last=0,score=0;
+const keys={up:false,down:false,left:false,right:false,run:false};
+let player={x:0,y:0,r:18,hp:100,dir:0,speed:170,attack:0,weapon:'HAMMER',ammo:20};
+let enemies=[],bullets=[],particles=[],spawnTimer=0;
+
+function resize(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);W=innerWidth;H=innerHeight}
+addEventListener('resize',resize);resize();
+
+function reset(){
+ player={x:W/2,y:H/2,r:18,hp:100,dir:0,speed:170,attack:0,weapon:'HAMMER',ammo:20};
+ enemies=[];bullets=[];particles=[];score=0;
+ for(let i=0;i<7;i++) spawnEnemy();
+ updateHUD();
+}
+function spawnEnemy(){
+ const edge=Math.floor(Math.random()*4), pad=35;
+ let x=edge===0?pad:edge===1?W-pad:Math.random()*W;
+ let y=edge===2?pad:edge===3?H-pad:Math.random()*H;
+ enemies.push({x,y,r:17,hp:60,speed:55+Math.random()*30,hit:0});
+}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function burst(x,y,n=8){
+ for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*160,vy:(Math.random()-.5)*160,t:.45});
+}
+function updateHUD(){
+ hp.textContent=Math.max(0,Math.round(player.hp));
+ scoreEl.textContent=score; ammo.textContent=player.ammo; weapon.textContent=player.weapon;
+}
+const hp=document.getElementById('hp'),scoreEl=document.getElementById('score'),ammo=document.getElementById('ammo'),weapon=document.getElementById('weapon');
+
+function move(dt){
+ let dx=(keys.right?1:0)-(keys.left?1:0),dy=(keys.down?1:0)-(keys.up?1:0);
+ const len=Math.hypot(dx,dy)||1;
+ const speed=player.speed*(keys.run?1.65:1);
+ if(dx||dy){player.x+=dx/len*speed*dt;player.y+=dy/len*speed*dt;player.dir=Math.atan2(dy,dx)}
+ player.x=clamp(player.x,25,W-25);player.y=clamp(player.y,85,H-25);
+}
+
+function shoot(){
+ if(!running||player.ammo<=0)return;
+ player.weapon='GUN';player.ammo--;
+ const angle=player.dir||0;
+ bullets.push({x:player.x+Math.cos(angle)*20,y:player.y+Math.sin(angle)*20,vx:Math.cos(angle)*520,vy:Math.sin(angle)*520,t:1.2});
+ burst(player.x+Math.cos(angle)*20,player.y+Math.sin(angle)*20,3);
+ updateHUD();
+}
+function melee(type){
+ if(!running)return;
+ player.weapon=type;player.attack=.25;updateHUD();
+ const range=type==='SWORD'?70:58;
+ for(const e of enemies){
+   if(dist(player,e)<range)e.hp-=type==='SWORD'?45:35;
+ }
+ burst(player.x+Math.cos(player.dir)*35,player.y+Math.sin(player.dir)*35,10);
+}
+function action(a){
+ if(a==='gun')shoot();
+ if(a==='hammer')melee('HAMMER');
+ if(a==='sword')melee('SWORD');
+ if(a==='run')keys.run=true;
+ if(a==='walk')keys.run=false;
+ if(a==='stop')Object.keys(keys).forEach(k=>keys[k]=false);
+}
+document.querySelectorAll('[data-key]').forEach(b=>{
+ const k=b.dataset.key;
+ const on=e=>{e.preventDefault();keys[k]=true};
+ const off=e=>{e.preventDefault();keys[k]=false};
+ b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off);
+});
+document.querySelectorAll('[data-action]').forEach(b=>{
+ b.addEventListener('pointerdown',e=>{e.preventDefault();action(b.dataset.action)});
+ b.addEventListener('pointerup',e=>{if(b.dataset.action==='run')keys.run=false});
+ b.addEventListener('pointercancel',e=>{if(b.dataset.action==='run')keys.run=false});
+});
+addEventListener('keydown',e=>{
+ if(['ArrowUp','w','W'].includes(e.key))keys.up=true;
+ if(['ArrowDown','s','S'].includes(e.key))keys.down=true;
+ if(['ArrowLeft','a','A'].includes(e.key))keys.left=true;
+ if(['ArrowRight','d','D'].includes(e.key))keys.right=true;
+ if(e.key==='Shift')keys.run=true;
+ if(e.key==='g'||e.key==='G')shoot();
+ if(e.key==='h'||e.key==='H')melee('HAMMER');
+ if(e.key==='j'||e.key==='J')melee('SWORD');
+});
+addEventListener('keyup',e=>{
+ if(['ArrowUp','w','W'].includes(e.key))keys.up=false;
+ if(['ArrowDown','s','S'].includes(e.key))keys.down=false;
+ if(['ArrowLeft','a','A'].includes(e.key))keys.left=false;
+ if(['ArrowRight','d','D'].includes(e.key))keys.right=false;
+ if(e.key==='Shift')keys.run=false;
+});
+
+function update(dt){
+ move(dt);player.attack=Math.max(0,player.attack-dt);
+ for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.t-=dt}
+ bullets=bullets.filter(b=>b.t>0&&b.x>-20&&b.x<W+20&&b.y>60&&b.y<H+20);
+ for(const e of enemies){
+   const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy)||1;
+   if(d>42){e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt}
+   else if(e.hit<=0){player.hp-=8;e.hit=.65;burst(player.x,player.y,4)}
+   e.hit=Math.max(0,e.hit-dt);
+ }
+ for(const b of bullets){
+   for(const e of enemies)if(e.hp>0&&dist(b,e)<e.r+5){e.hp-=35;b.t=0;burst(e.x,e.y,7);break}
+ }
+ enemies=enemies.filter(e=>{if(e.hp<=0){score+=10;return false}return true});
+ spawnTimer-=dt;
+ if(spawnTimer<=0&&enemies.length<10){spawnEnemy();spawnTimer=2}
+ for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.94;p.vy*=.94;p.t-=dt}
+ particles=particles.filter(p=>p.t>0);
+ if(player.hp<=0){running=false;message.textContent='GAME OVER — press START to play again';document.getElementById('start').style.display='flex'}
+ if(score>=200){running=false;message.textContent='YOU WIN! Gang defeated!';document.getElementById('start').style.display='flex'}
+ updateHUD();
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#242a31';ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle='#313944';ctx.lineWidth=2;
+ for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,70);ctx.lineTo(x,H);ctx.stroke()}
+ for(let y=70;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ // buildings/obstacles
+ ctx.fillStyle='#333a44';for(let i=0;i<8;i++){let x=(i*173)%Math.max(1,W-100),y=85+((i*97)%Math.max(1,H-160));ctx.fillRect(x,y,70,45)}
+ // bullets
+ ctx.fillStyle='#ffd54a';for(const b of bullets){ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill()}
+ // enemies
+ for(const e of enemies){
+   ctx.save();ctx.translate(e.x,e.y);ctx.fillStyle='#b83232';ctx.beginPath();ctx.arc(0,0,e.r,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#fff';ctx.font='15px Arial';ctx.textAlign='center';ctx.fillText('G',0,5);
+   ctx.restore();
+   ctx.fillStyle='#111';ctx.fillRect(e.x-20,e.y-28,40,5);ctx.fillStyle='#ef5350';ctx.fillRect(e.x-20,e.y-28,40*Math.max(0,e.hp/60),5)
+ }
+ // player
+ ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.dir);
+ ctx.fillStyle='#247cff';ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#dce8ff';ctx.fillRect(10,-5,25,10);ctx.restore();
+ if(player.attack>0){ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.arc(player.x,player.y,player.weapon==='SWORD'?65:52,player.dir-.65,player.dir+.65);ctx.stroke()}
+ for(const p of particles){ctx.globalAlpha=Math.max(0,p.t/.45);ctx.fillStyle='#ffcc55';ctx.fillRect(p.x,p.y,4,4);ctx.globalAlpha=1}
+}
+function loop(t){const dt=Math.min(.033,(t-last)/1000||0);last=t;if(running)update(dt);draw();requestAnimationFrame(loop)}
+document.getElementById('startBtn').onclick=()=>{reset();running=true;document.getElementById('start').style.display='none';message.textContent='Defeat the gang!';last=performance.now()};
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
