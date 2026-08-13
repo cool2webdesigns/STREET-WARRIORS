@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Street Warriors</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+html,body{
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#111;
+  font-family:Arial,sans-serif;
+  touch-action:none;
+}
+
+canvas{
+  display:block;
+  width:100%;
+  height:100%;
+  background:#20252b;
+}
+
+/* HUD */
+#hud{
+  position:fixed;
+  top:10px;
+  left:10px;
+  right:10px;
+  display:flex;
+  justify-content:space-between;
+  z-index:10;
+  pointer-events:none;
+}
+
+.hudBox{
+  background:rgba(0,0,0,.75);
+  color:white;
+  padding:9px 13px;
+  border-radius:12px;
+  border:1px solid #ffffff44;
+  font-weight:bold;
+  font-size:14px;
+}
+
+/* Message */
+#message{
+  position:fixed;
+  top:65px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:10;
+  background:rgba(0,0,0,.75);
+  color:white;
+  padding:8px 16px;
+  border-radius:20px;
+}
+
+/* Controls */
+#controls{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  padding:0 12px;
+  z-index:20;
+  pointer-events:none;
+}
+
+.controlGroup{
+  pointer-events:auto;
+}
+
+/* D-PAD */
+.dpad{
+  display:grid;
+  grid-template-columns:58px 58px 58px;
+  grid-template-rows:52px 52px 52px;
+  gap:5px;
+}
+
+.dpad button:nth-child(1){
+  grid-column:2;
+}
+
+.dpad button:nth-child(2){
+  grid-column:1;
+  grid-row:2;
+}
+
+.dpad button:nth-child(3){
+  grid-column:2;
+  grid-row:2;
+}
+
+.dpad button:nth-child(4){
+  grid-column:3;
+  grid-row:2;
+}
+
+/* Action buttons */
+.actions{
+  display:grid;
+  grid-template-columns:70px 70px;
+  gap:7px;
+}
+
+button{
+  min-width:58px;
+  min-height:52px;
+  border:1px solid #ffffff55;
+  border-radius:14px;
+  background:#202b3ddd;
+  color:white;
+  font-size:15px;
+  font-weight:bold;
+  box-shadow:0 4px 10px #0008;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+button:active{
+  transform:scale(.92);
+  background:#3e5d91;
+}
+
+/* Start screen */
+#startScreen{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  background:rgba(0,0,0,.9);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+.startCard{
+  width:min(92%,520px);
+  padding:28px;
+  border-radius:22px;
+  background:#171c25;
+  border:1px solid #ffffff33;
+  color:white;
+}
+
+.startCard h1{
+  font-size:34px;
+  margin-bottom:12px;
+}
+
+.startCard p{
+  color:#ccd2dc;
+  line-height:1.5;
+  margin-bottom:10px;
+}
+
+#startButton{
+  margin-top:15px;
+  width:200px;
+  background:#287cff;
+  border:0;
+  font-size:18px;
+}
+
+@media(max-width:600px){
+
+  .dpad{
+    grid-template-columns:50px 50px 50px;
+    grid-template-rows:48px 48px 48px;
+  }
+
+  .actions{
+    grid-template-columns:62px 62px;
+  }
+
+  .actions button{
+    min-width:62px;
+    font-size:12px;
+  }
+
+  .hudBox{
+    font-size:11px;
+    padding:7px 9px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+
+  <div class="hudBox">
+    ❤️ HP: <span id="hp">100</span>
+    &nbsp; ⭐ Score: <span id="score">0</span>
+  </div>
+
+  <div class="hudBox">
+    🔫 Ammo: <span id="ammo">20</span>
+    &nbsp; ⚔️ <span id="weapon">HAMMER</span>
+  </div>
+
+</div>
+
+<div id="message">
+  Defeat the gang!
+</div>
+
+<!-- MOBILE CONTROLS -->
+<div id="controls">
+
+  <!-- MOVEMENT -->
+  <div class="controlGroup">
+
+    <div class="dpad">
+
+      <button data-key="up">▲</button>
+
+      <button data-key="left">◀</button>
+
+      <button data-key="down">▼</button>
+
+      <button data-key="right">▶</button>
+
+    </div>
+
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="controlGroup">
+
+    <div class="actions">
+
+      <button data-action="walk">
+        🚶 WALK
+      </button>
+
+      <button data-action="stop">
+        🛑 STOP
+      </button>
+
+      <button data-action="gun">
+        🔫 GUN
+      </button>
+
+      <button data-action="hammer">
+        🔨 HAMMER
+      </button>
+
+      <button data-action="sword">
+        ⚔️ SWORD
+      </button>
+
+      <button data-action="run">
+        🏃 RUN
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- START SCREEN -->
+<div id="startScreen">
+
+  <div class="startCard">
+
+    <h1>⚔️ STREET WARRIORS</h1>
+
+    <p>
+      Fight computer-controlled gang enemies
+      in a fictional arcade battle arena.
+    </p>
+
+    <p>
+      <b>Move:</b> Arrow Keys / WASD
+    </p>
+
+    <p>
+      <b>Gun:</b> G
+      &nbsp;
+      <b>Hammer:</b> H
+      &nbsp;
+      <b>Sword:</b> J
+    </p>
+
+    <p>
+      <b>Run:</b> Shift
+    </p>
+
+    <button id="startButton">
+      START GAME
+    </button>
+
+  </div>
+
+</div>
+
+<script>
+
+/* =====================================================
+   STREET WARRIORS
+   Complete game in one HTML file
+   ===================================================== */
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let W = window.innerWidth;
+let H = window.innerHeight;
+
+canvas.width = W;
+canvas.height = H;
+
+window.addEventListener("resize", () => {
+
+  W = window.innerWidth;
+  H = window.innerHeight;
+
+  canvas.width = W;
+  canvas.height = H;
+
+});
+
+/* GAME STATE */
+
+let gameRunning = false;
+
+let score = 0;
+
+let lastTime = 0;
+
+let spawnTimer = 0;
+
+/* PLAYER */
+
+const player = {
+
+  x: W / 2,
+
+  y: H / 2,
+
+  radius: 18,
+
+  hp: 100,
+
+  speed: 170,
+
+  direction: 0,
+
+  weapon: "HAMMER",
+
+  ammo: 20,
+
+  attackTimer: 0
+
+};
+
+/* CONTROLS */
+
+const keys = {
+
+  up:false,
+
+  down:false,
+
+  left:false,
+
+  right:false,
+
+  run:false
+
+};
+
+/* OBJECTS */
+
+let enemies = [];
+
+let bullets = [];
+
+let particles = [];
+
+/* HUD */
+
+const hpText =
+  document.getElementById("hp");
+
+const scoreText =
+  document.getElementById("score");
+
+const ammoText =
+  document.getElementById("ammo");
+
+const weaponText =
+  document.getElementById("weapon");
+
+const message =
+  document.getElementById("message");
+
+const startScreen =
+  document.getElementById("startScreen");
+
+/* =====================================================
+   RESET GAME
+   ===================================================== */
+
+function resetGame(){
+
+  player.x = W / 2;
+  player.y = H / 2;
+
+  player.hp = 100;
+
+  player.weapon = "HAMMER";
+
+  player.ammo = 20;
+
+  player.direction = 0;
+
+  player.attackTimer = 0;
+
+  score = 0;
+
+  enemies = [];
+
+  bullets = [];
+
+  particles = [];
+
+  spawnTimer = 0;
+
+  for(let i=0;i<7;i++){
+
+    spawnEnemy();
+
+  }
+
+  updateHUD();
+
+}
+
+/* =====================================================
+   SPAWN ENEMY
+   ===================================================== */
+
+function spawnEnemy(){
+
+  const side =
+    Math.floor(Math.random()*4);
+
+  let x;
+  let y;
+
+  if(side === 0){
+
+    x = 30;
+    y = Math.random()*H;
+
+  }
+
+  else if(side === 1){
+
+    x = W-30;
+    y = Math.random()*H;
+
+  }
+
+  else if(side === 2){
+
+    x = Math.random()*W;
+    y = 80;
+
+  }
+
+  else{
+
+    x = Math.random()*W;
+    y = H-30;
+
+  }
+
+  enemies.push({
+
+    x:x,
+
+    y:y,
+
+    radius:17,
+
+    hp:60,
+
+    speed:55 + Math.random()*30,
+
+    hitTimer:0
+
+  });
+
+}
+
+/* =====================================================
+   DISTANCE
+   ===================================================== */
+
+function distance(a,b){
+
+  return Math.hypot(
+    a.x-b.x,
+    a.y-b.y
+  );
+
+}
+
+/* =====================================================
+   PARTICLE EFFECT
+   ===================================================== */
+
+function createParticles(x,y,count=8){
+
+  for(let i=0;i<count;i++){
+
+    particles.push({
+
+      x:x,
+
+      y:y,
+
+      vx:(Math.random()-.5)*180,
+
+      vy:(Math.random()-.5)*180,
+
+      life:.45
+
+    });
+
+  }
+
+}
+
+/* =====================================================
+   HUD
+   ===================================================== */
+
+function updateHUD(){
+
+  hpText.textContent =
+    Math.max(0,Math.round(player.hp));
+
+  scoreText.textContent =
+    score;
+
+  ammoText.textContent =
+    player.ammo;
+
+  weaponText.textContent =
+    player.weapon;
+
+}
+
+/* =====================================================
+   MOVEMENT
+   ===================================================== */
+
+function movePlayer(dt){
+
+  let dx = 0;
+  let dy = 0;
+
+  if(keys.left)
+    dx--;
+
+  if(keys.right)
+    dx++;
+
+  if(keys.up)
+    dy--;
+
+  if(keys.down)
+    dy++;
+
+  const length =
+    Math.hypot(dx,dy) || 1;
+
+  let speed =
+    player.speed;
+
+  if(keys.run){
+
+    speed *= 1.65;
+
+  }
+
+  if(dx !== 0 || dy !== 0){
+
+    player.x +=
+      dx / length * speed * dt;
+
+    player.y +=
+      dy / length * speed * dt;
+
+    player.direction =
+      Math.atan2(dy,dx);
+
+  }
+
+  player.x =
+    Math.max(25,
+    Math.min(W-25,player.x));
+
+  player.y =
+    Math.max(80,
+    Math.min(H-25,player.y));
+
+}
+
+/* =====================================================
+   GUN
+   ===================================================== */
+
+function shoot(){
+
+  if(!gameRunning)
+    return;
+
+  if(player.ammo <= 0){
+
+    message.textContent =
+      "Out of ammo!";
+
+    return;
+
+  }
+
+  player.weapon = "GUN";
+
+  player.ammo--;
+
+  const angle =
+    player.direction;
+
+  bullets.push({
+
+    x:
+      player.x +
+      Math.cos(angle)*25,
+
+    y:
+      player.y +
+      Math.sin(angle)*25,
+
+    vx:
+      Math.cos(angle)*550,
+
+    vy:
+      Math.sin(angle)*550,
+
+    life:1.2
+
+  });
+
+  createParticles(
+    player.x +
+    Math.cos(angle)*25,
+
+    player.y +
+    Math.sin(angle)*25,
+
+    3
+  );
+
+  updateHUD();
+
+}
+
+/* =====================================================
+   HAMMER / SWORD
+   ===================================================== */
+
+function meleeAttack(type){
+
+  if(!gameRunning)
+    return;
+
+  player.weapon = type;
+
+  player.attackTimer = .25;
+
+  const range =
+    type === "SWORD"
+    ? 70
+    : 58;
+
+  const damage =
+    type === "SWORD"
+    ? 45
+    : 35;
+
+  for(const enemy of enemies){
+
+    if(distance(player,enemy) < range){
+
+      enemy.hp -= damage;
+
+      createParticles(
+        enemy.x,
+        enemy.y,
+        8
+      );
+
+    }
+
+  }
+
+  updateHUD();
+
+}
+
+/* =====================================================
+   BUTTON ACTION
+   ===================================================== */
+
+function action(type){
+
+  if(type === "gun")
+    shoot();
+
+  if(type === "hammer")
+    meleeAttack("HAMMER");
+
+  if(type === "sword")
+    meleeAttack("SWORD");
+
+  if(type === "walk")
+    keys.run = false;
+
+  if(type === "run")
+    keys.run = true;
+
+  if(type === "stop"){
+
+    keys.up = false;
+    keys.down = false;
+    keys.left = false;
+    keys.right = false;
+    keys.run = false;
+
+  }
+
+}
+
+/* =====================================================
+   TOUCH MOVEMENT BUTTONS
+   ===================================================== */
+
+document
+.querySelectorAll("[data-key]")
+.forEach(button => {
+
+  const key =
+    button.dataset.key;
+
+  button.addEventListener(
+    "pointerdown",
+    event => {
+
+      event.preventDefault();
+
+      keys[key] = true;
+
+    }
+  );
+
+  button.addEventListener(
+    "pointerup",
+    event => {
+
+      event.preventDefault();
+
+      keys[key] = false;
+
+    }
+  );
+
+  button.addEventListener(
+    "pointercancel",
+    event => {
+
+      keys[key] = false;
+
+    }
+  );
+
+  button.addEventListener(
+    "pointerleave",
+    event => {
+
+      keys[key] = false;
+
+    }
+  );
+
+});
+
+/* =====================================================
+   TOUCH ACTION BUTTONS
+   ===================================================== */
+
+document
+.querySelectorAll("[data-action]")
+.forEach(button => {
+
+  button.addEventListener(
+    "pointerdown",
+    event => {
+
+      event.preventDefault();
+
+      action(
+        button.dataset.action
+      );
+
+    }
+  );
+
+  button.addEventListener(
+    "pointerup",
+    event => {
+
+      if(button.dataset.action === "run"){
+
+        keys.run = false;
+
+      }
+
+    }
+  );
+
+});
+
+/* =====================================================
+   KEYBOARD CONTROLS
+   ===================================================== */
+
+window.addEventListener(
+"keydown",
+event => {
+
+  if(
+    event.key === "ArrowUp" ||
+    event.key === "w" ||
+    event.key === "W"
+  ){
+
+    keys.up = true;
+
+  }
+
+  if(
+    event.key === "ArrowDown" ||
+    event.key === "s" ||
+    event.key === "S"
+  ){
+
+    keys.down = true;
+
+  }
+
+  if(
+    event.key === "ArrowLeft" ||
+    event.key === "a" ||
+    event.key === "A"
+  ){
+
+    keys.left = true;
+
+  }
+
+  if(
+    event.key === "ArrowRight" ||
+    event.key === "d" ||
+    event.key === "D"
+  ){
+
+    keys.right = true;
+
+  }
+
+  if(event.key === "Shift")
+    keys.run = true;
+
+  if(event.key === "g" ||
+     event.key === "G")
+    shoot();
+
+  if(event.key === "h" ||
+     event.key === "H")
+    meleeAttack("HAMMER");
+
+  if(event.key === "j" ||
+     event.key === "J")
+    meleeAttack("SWORD");
+
+});
+
+/* =====================================================
+   KEYBOARD RELEASE
+   ===================================================== */
+
+window.addEventListener(
+"keyup",
+event => {
+
+  if(
+    event.key === "ArrowUp" ||
+    event.key === "w" ||
+    event.key === "W"
+  )
+    keys.up = false;
+
+  if(
+    event.key === "ArrowDown" ||
+    event.key === "s" ||
+    event.key === "S"
+  )
+    keys.down = false;
+
+  if(
+    event.key === "ArrowLeft" ||
+    event.key === "a" ||
+    event.key === "A"
+  )
+    keys.left = false;
+
+  if(
+    event.key === "ArrowRight" ||
+    event.key === "d" ||
+    event.key === "D"
+  )
+    keys.right = false;
+
+  if(event.key === "Shift")
+    keys.run = false;
+
+});
+
+/* =====================================================
+   UPDATE
+   ===================================================== */
+
+function update(dt){
+
+  movePlayer(dt);
+
+  player.attackTimer =
+    Math.max(
+      0,
+      player.attackTimer-dt
+    );
+
+  /* Bullets */
+
+  for(const bullet of bullets){
+
+    bullet.x +=
+      bullet.vx * dt;
+
+    bullet.y +=
+      bullet.vy * dt;
+
+    bullet.life -= dt;
+
+  }
+
+  bullets =
+    bullets.filter(
+      b =>
+        b.life > 0 &&
+        b.x > -30 &&
+        b.x < W+30 &&
+        b.y > 50 &&
+        b.y < H+30
+    );
+
+  /* Enemies */
+
+  for(const enemy of enemies){
+
+    const dx =
+      player.x-enemy.x;
+
+    const dy =
+      player.y-enemy.y;
+
+    const d =
+      Math.hypot(dx,dy) || 1;
+
+    if(d > 42){
+
+      enemy.x +=
+        dx/d *
+        enemy.speed *
+        dt;
+
+      enemy.y +=
+        dy/d *
+        enemy.speed *
+        dt;
+
+    }
+
+    else if(enemy.hitTimer <= 0){
+
+      player.hp -= 8;
+
+      enemy.hitTimer = .65;
+
+      createParticles(
+        player.x,
+        player.y,
+        4
+      );
+
+    }
+
+    enemy.hitTimer =
+      Math.max(
+        0,
+        enemy.hitTimer-dt
+      );
+
+  }
+
+  /* Bullet collisions */
+
+  for(const bullet of bullets){
+
+    for(const enemy of enemies){
+
+      if(
+        enemy.hp > 0 &&
+        distance(bullet,enemy)
+        < enemy.radius+5
+      ){
+
+        enemy.hp -= 35;
+
+        bullet.life = 0;
+
+        createParticles(
+          enemy.x,
+          enemy.y,
+          8
+        );
+
+        break;
+
+      }
+
+    }
+
+  }
+
+  /* Dead enemies */
+
+  enemies =
+    enemies.filter(enemy => {
+
+      if(enemy.hp <= 0){
+
+        score += 10;
+
+        return false;
+
+      }
+
+      return true;
+
+    });
+
+  /* Spawn */
+
+  spawnTimer -= dt;
+
+  if(
+    spawnTimer <= 0 &&
+    enemies.length < 10
+  ){
+
+    spawnEnemy();
+
+    spawnTimer = 2;
+
+  }
+
+  /* Particles */
+
+  for(const p of particles){
+
+    p.x += p.vx*dt;
+
+    p.y += p.vy*dt;
+
+    p.vx *= .94;
+
+    p.vy *= .94;
+
+    p.life -= dt;
+
+  }
+
+  particles =
+    particles.filter(
+      p => p.life > 0
+    );
+
+  /* Game over */
+
+  if(player.hp <= 0){
+
+    gameRunning = false;
+
+    message.textContent =
+      "GAME OVER";
+
+    startScreen.style.display =
+      "flex";
+
+  }
+
+  /* Win */
+
+  if(score >= 200){
+
+    gameRunning = false;
+
+    message.textContent =
+      "YOU WIN!";
+
+    startScreen.style.display =
+      "flex";
+
+  }
+
+  updateHUD();
+
+}
+
+/* =====================================================
+   DRAW
+   ===================================================== */
+
+function draw(){
+
+  ctx.clearRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+  /* Ground */
+
+  ctx.fillStyle =
+    "#252b32";
+
+  ctx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+  /* Grid / Streets */
+
+  ctx.strokeStyle =
+    "#343b44";
+
+  ctx.lineWidth = 2;
+
+  for(
+    let x=0;
+    x<W;
+    x+=60
+  ){
+
+    ctx.beginPath();
+
+    ctx.moveTo(x,70);
+
+    ctx.lineTo(x,H);
+
+    ctx.stroke();
+
+  }
+
+  for(
+    let y=70;
+    y<H;
+    y+=60
+  ){
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,y);
+
+    ctx.lineTo(W,y);
+
+    ctx.stroke();
+
+  }
+
+  /* Buildings */
+
+  ctx.fillStyle =
+    "#3a414a";
+
+  for(let i=0;i<10;i++){
+
+    const x =
+      (i*173) %
+      Math.max(1,W-100);
+
+    const y =
+      90 +
+      ((i*97) %
+      Math.max(1,H-150));
+
+    ctx.fillRect(
+      x,
+      y,
+      70,
+      45
+    );
+
+  }
+
+  /* Bullets */
+
+  ctx.fillStyle =
+    "#ffd54a";
+
+  for(const bullet of bullets){
+
+    ctx.beginPath();
+
+    ctx.arc(
+      bullet.x,
+      bullet.y,
+      4,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+
+  }
+
+  /* Enemies */
+
+  for(const enemy of enemies){
+
+    ctx.save();
+
+    ctx.translate(
+      enemy.x,
+      enemy.y
+    );
+
+    ctx.fillStyle =
+      "#c83232";
+
+    ctx.beginPath();
+
+    ctx.arc(
+      0,
+      0,
+      enemy.radius,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+
+    ctx.fillStyle =
+      "white";
+
+    ctx.font =
+      "bold 15px Arial";
+
+    ctx.textAlign =
+      "center";
+
+    ctx.fillText(
+      "G",
+      0,
+      5
+    );
+
+    ctx.restore();
+
+    /* Enemy health */
+
+    ctx.fillStyle =
+      "#111";
+
+    ctx.fillRect(
+      enemy.x-20,
+      enemy.y-28,
+      40,
+      5
+    );
+
+    ctx.fillStyle =
+      "#ff5555";
+
+    ctx.fillRect(
+      enemy.x-20,
+      enemy.y-28,
+      40 *
+      Math.max(
+        0,
+        enemy.hp/60
+      ),
+      5
+    );
+
+  }
+
+  /* Player */
+
+  ctx.save();
+
+  ctx.translate(
+    player.x,
+    player.y
+  );
+
+  ctx.rotate(
+    player.direction
+  );
+
+  ctx.fillStyle =
+    "#247cff";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    0,
+    0,
+    player.radius,
+    0,
+    Math.PI*2
+  );
+
+  ctx.fill();
+
+  /* Weapon */
+
+  ctx.fillStyle =
+    "#eeeeee";
+
+  ctx.fillRect(
+    10,
+    -5,
+    28,
+    10
+  );
+
+  ctx.restore();
+
+  /* Attack effect */
+
+  if(player.attackTimer > 0){
+
+    ctx.strokeStyle =
+      "#ffffff";
+
+    ctx.lineWidth = 5;
+
+    ctx.beginPath();
+
+    ctx.arc(
+      player.x,
+      player.y,
+      player.weapon === "SWORD"
+      ? 65
+      : 52,
+      player.direction-.65,
+      player.direction+.65
+    );
+
+    ctx.stroke();
+
+  }
+
+  /* Particles */
+
+  for(const p of particles){
+
+    ctx.globalAlpha =
+      Math.max(
+        0,
+        p.life/.45
+      );
+
+    ctx.fillStyle =
+      "#ffcc55";
+
+    ctx.fillRect(
+      p.x,
+      p.y,
+      4,
+      4
+    );
+
+    ctx.globalAlpha = 1;
+
+  }
+
+}
+
+/* =====================================================
+   GAME LOOP
+   ===================================================== */
+
+function gameLoop(time){
+
+  const dt =
+    Math.min(
+      .033,
+      (time-lastTime)/1000 || 0
+    );
+
+  lastTime = time;
+
+  if(gameRunning){
+
+    update(dt);
+
+  }
+
+  draw();
+
+  requestAnimationFrame(
+    gameLoop
+  );
+
+}
+
+/* =====================================================
+   START GAME
+   ===================================================== */
+
+document
+.getElementById("startButton")
+.addEventListener(
+"click",
+() => {
+
+  resetGame();
+
+  gameRunning = true;
+
+  startScreen.style.display =
+    "none";
+
+  message.textContent =
+    "Defeat the gang!";
+
+  lastTime =
+    performance.now();
+
+});
+
+/* START */
+
+requestAnimationFrame(
+  gameLoop
+);
+
+</script>
+
+</body>
+</html>
